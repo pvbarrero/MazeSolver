@@ -1,9 +1,11 @@
 import csv
+import time
 import tkinter
 from tkinter import filedialog
 from collections import deque
 import queue
 import pygame, sys
+
 
 
 RED = (255, 0, 0)
@@ -12,6 +14,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 ORANGE = (255, 165 ,0)
 TURQUOISE = (64, 224, 208)
+
 
 ###CLASES NECESARIAS###
 class Boton(object):
@@ -84,6 +87,8 @@ def mostrar_laberinto(ventana,laberinto):
                     colores = ORANGE 
             if lines == laberinto[len(laberinto)-1] and element == "c":
                     colores = TURQUOISE 
+            if element == "e":
+                    colores = GREEN                     
             pygame.draw.rect(ventana,colores,(x_pos,y_pos,ancho_cuadrado,alto_cuadrado))
             #print(element,w,h,filas,cols,ancho_cuadrado,alto_cuadrado,x_pos,y_pos, colores)
             x_pos+=ancho_cuadrado
@@ -125,49 +130,74 @@ def nodo_en_frontera(frontera,nodo):
     for elem in frontera:
         if nodo == elem:
             return True
-        return False
+    return False
 
 ##Encontrar entrada
 def encontrar_entrada(laberinto):
     entrada=laberinto[0].index("c")
     return entrada
 
+##Devolver la matriz laberinto con el camino
+def matriz_lab_final(laberinto,camino): 
+    laberinto_l=[]  
+    for fila in laberinto:
+        for i in fila:
+            laberinto_l.append(i)
+    for pos in camino:
+        laberinto_l[pos]="e"
+    laberinto=[laberinto_l[i:i + len(laberinto)] for i in range(0, len(laberinto_l), len(laberinto))]
+    return laberinto
+
 ##DFS
 def buscar_dfs(laberinto):
     nodo_inicial = encontrar_entrada(laberinto)
     nodo_objetivo = enum_nodo(laberinto,len(laberinto)-1,len(laberinto[0])-2)
     nodo_actual = nodo_inicial
-    camino=[nodo_inicial]
+    camino = [nodo_inicial]
 
-    frontera = deque([camino])
+    frontera = deque()
+    frontera.append(camino)
     visitado = camino
     caminos_encontrados = [camino]
+    #print(nodo_inicial,nodo_objetivo, camino, frontera,visitado,caminos_encontrados)
 
     if(nodo_actual==nodo_objetivo):
         return camino
 
-    for i in range(20):
+    while frontera:
         camino = frontera.pop()
-        hijos=expandir_nodo(laberinto,camino[-1])
+        hijos = expandir_nodo(laberinto,camino[-1])
+        #print(camino, hijos)
         if(len(hijos)>0):
             for hijo in hijos:
-                nuevo_camino = camino+[hijo]
+                nuevo_camino = camino + [hijo]
+                #print(nuevo_camino)
+                #print(hijo)
                 if(hijo==nodo_objetivo):
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
+                    #print("found it")
                     return nuevo_camino
-                if not nodo_en_frontera(visitado,hijo):
-                    frontera.append(nuevo_camino)
-                    caminos_encontrados.append(nuevo_camino)
+                #print(not nodo_en_frontera(visitado,hijo))
+                if(not nodo_en_frontera(visitado,hijo)):
+                    #print(visitado)
                     visitado.append(hijo)
+                    caminos_encontrados.append(nuevo_camino)
+                    frontera.append(nuevo_camino)
+                    #print(frontera)
+                #print(visitado)
+    return 0
 
 ##Búsqueda iterativa
 def buscar_ids(laberinto):
-    nodo_actual=encontrar_entrada(laberinto)
-    camino = [nodo_actual]
-    nodo_objetivo = enum_nodo(laberinto,len(laberinto) - 1 ,len(laberinto[0])-2)
-    frontera = deque([camino])
-    visitado  = camino
+    nodo_inicial = encontrar_entrada(laberinto)
+    nodo_objetivo = enum_nodo(laberinto,len(laberinto)-1,len(laberinto[0])-2)
+    nodo_actual = nodo_inicial
+    camino = [nodo_inicial]
+
+    frontera = deque()
+    frontera.append(camino)
+    visitado = camino
     caminos_encontrados = [camino]
 
     if(camino == nodo_objetivo):
@@ -187,15 +217,12 @@ def buscar_ids(laberinto):
         if(len(hijos)>0):
             for hijo in hijos:
                 nuevo_camino = camino + [hijo]
-                print(nuevo_camino)
                 valores_n[hijo] = valores_n[nodo_actual] + 1
 
                 if(hijo == nodo_objetivo):
                     visitado.append(hijo)
-                    print(visitado)
                     caminos_encontrados.append(nuevo_camino)
-                    #return caminos_encontrados
-                    print(caminos_encontrados)
+                    return nuevo_camino
 
                 if not nodo_en_frontera(visitado, hijo):
                     caminos_encontrados.append(nuevo_camino)
@@ -215,18 +242,21 @@ def buscar_ids(laberinto):
 
 ##Busqueda uniforme
 def busqueda_uniforme(laberinto):
-    nodo_actual= encontrar_entrada(laberinto)
-    camino = [nodo_actual]
-    pesos_hijos = {}
-    pesos_hijos[nodo_actual]=0
+    nodo_inicial = encontrar_entrada(laberinto)
+    nodo_objetivo = enum_nodo(laberinto,len(laberinto)-1,len(laberinto[0])-2)
+    nodo_actual = nodo_inicial
+    camino = [nodo_inicial]
 
-    nodo_objetivo= enum_nodo(laberinto,len(laberinto) - 1 ,len(laberinto[0])-2)
-    frontera = deque([camino])
-    visitado  = camino
+    frontera = deque()
+    frontera.append(camino)
+    visitado = camino
     caminos_encontrados = [camino]
+
+    pesos_hijos = {}
+    pesos_hijos[nodo_actual] = 0
+
     if(nodo_actual == nodo_objetivo):
         return camino
-    i=0
 
     while frontera:
         camino = frontera.pop()
@@ -234,14 +264,13 @@ def busqueda_uniforme(laberinto):
         hijos = expandir_nodo(laberinto, camino[-1])
 
         if(len(hijos)>0):
-
             for hijo in hijos:
                 nuevo_camino = camino + [hijo]
-                peso = pesos_hijos[camino[-1]] + 1
-                pesos_hijos[hijo] = pesos_hijos
+                peso = pesos_hijos[camino[-1]]
+                peso += 1
+                pesos_hijos[hijo] = peso
 
                 if(hijo == nodo_objetivo):
-
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
                     return nuevo_camino
@@ -266,18 +295,21 @@ def busqueda_uniforme(laberinto):
 
 
 def busqueda_BFS(laberinto):
-    nodo_actual=encontrar_entrada(laberinto)
-    camino = [nodo_actual]
+    nodo_inicial = encontrar_entrada(laberinto)
     nodo_objetivo = enum_nodo(laberinto,len(laberinto) - 1 ,len(laberinto[0])-2)
-    queue = []
-    visitado =camino
-    caminos_encontrados=[camino]
+    nodo_actual = nodo_inicial
+    camino = [nodo_inicial]
+
+    frontera_queue = deque()
+    frontera_queue.append(camino)
+    visitado = camino
+    caminos_encontrados = [camino]
 
     if(camino[-1] == nodo_objetivo):
         return camino
 
     while queue:
-        camino = queue.pop()
+        camino = frontera_queue.popleft()
         hijos = expandir_nodo(laberinto, camino[-1])
         if(len(hijos)>0):
             for hijo in hijos:
@@ -286,13 +318,14 @@ def busqueda_BFS(laberinto):
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
                     return nuevo_camino
-                if not nodo_en_frontera(visitado, hijo):
+                if(not nodo_en_frontera(visitado, hijo)):
                     caminos_encontrados.append(nuevo_camino)
                     visitado.append(hijo)
-                    queue.appendleft(nuevo_camino)
+                    frontera_queue.append(nuevo_camino)
 
+###PROGRAMA PRINCIPAL###
 
-laberinto=[]
+laberinto,laberinto_ini=[],[]
 pygame.init()
 
 #Crear la ventana y fuente para el texto
@@ -313,7 +346,8 @@ boton_UCS = Boton(20,170,"UCS")
 boton_GREEDY = Boton(20,220,"GREEDY")
 boton_ASTAR = Boton(20,270,"A*")
 boton_SELECCIONAR_LABERINTO = Boton(20,320,"SELECCIONAR LABERINTO")
-boton_EXIT = Boton(20,370,"SALIR")
+boton_RESET = Boton(20,370,"REINICIAR")
+boton_EXIT = Boton(20,420,"SALIR")
 
 recto=pygame.Rect(0,0,10,10)
 salir = False
@@ -321,27 +355,38 @@ while not salir:
     screen.fill((202,228,241))
     if laberinto:
         mostrar_laberinto(laberinto_grafico,laberinto)
-    #pygame.draw.rect(laberinto_grafico,(200,100,130),recto)
     screen.blit(laberinto_grafico,(250,50))
     if dibujar_boton(screen,boton_DFS):
         print("DFS")
-        print(buscar_dfs(laberinto))
+        camino=buscar_dfs(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino)
+        continue
     if dibujar_boton(screen,boton_BFS):
         print("BFS")
-        print(busqueda_BFS(laberinto))
+        camino=busqueda_BFS(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino)
+        continue        
     if dibujar_boton(screen,boton_IDS):
         print("IDS")
-        print(buscar_ids(laberinto))
+        camino=buscar_ids(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino)
+        continue        
     if dibujar_boton(screen,boton_UCS):
         print("UCS")
-        print(busqueda_uniforme(laberinto))
+        camino=busqueda_uniforme(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino)
+        continue        
     if dibujar_boton(screen,boton_GREEDY):
         print("GREEDY")
     if dibujar_boton(screen,boton_ASTAR):
         print("A*")
     if dibujar_boton(screen,boton_SELECCIONAR_LABERINTO):
-        laberinto=pedir_lab()
         print("SELECCIONAR LABERINTO")
+        laberinto=pedir_lab()
+        laberinto_ini=laberinto
+    if dibujar_boton(screen,boton_RESET):
+        print("RESTAURAR LABERINTO")        
+        laberinto=laberinto_ini
     if dibujar_boton(screen,boton_EXIT):
         salir = True
     for event in pygame.event.get():

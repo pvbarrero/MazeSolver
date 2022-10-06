@@ -3,6 +3,7 @@ import time
 import tkinter
 from tkinter import filedialog
 from collections import deque
+from treelib import Node,Tree   
 import queue
 import pygame, sys
 
@@ -87,8 +88,10 @@ def mostrar_laberinto(ventana,laberinto):
                     colores = ORANGE 
             if lines == laberinto[len(laberinto)-1] and element == "c":
                     colores = TURQUOISE 
+            if element == "v":
+                    colores = RED                    
             if element == "e":
-                    colores = GREEN                     
+                    colores = GREEN                        
             pygame.draw.rect(ventana,colores,(x_pos,y_pos,ancho_cuadrado,alto_cuadrado))
             #print(element,w,h,filas,cols,ancho_cuadrado,alto_cuadrado,x_pos,y_pos, colores)
             x_pos+=ancho_cuadrado
@@ -138,54 +141,59 @@ def encontrar_entrada(laberinto):
     return entrada
 
 ##Devolver la matriz laberinto con el camino
-def matriz_lab_final(laberinto,camino): 
+def matriz_lab_final(laberinto,camino,visitados): 
     laberinto_l=[]  
     for fila in laberinto:
         for i in fila:
             laberinto_l.append(i)
+
+    for pos in visitados:
+        laberinto_l[pos]="v"            
     for pos in camino:
-        laberinto_l[pos]="e"
+        laberinto_l[pos]="e"        
     laberinto=[laberinto_l[i:i + len(laberinto)] for i in range(0, len(laberinto_l), len(laberinto))]
-    return laberinto
+    return laberinto    
 
 ##DFS
+
 def buscar_dfs(laberinto):
     nodo_inicial = encontrar_entrada(laberinto)
     nodo_objetivo = enum_nodo(laberinto,len(laberinto)-1,len(laberinto[0])-2)
     nodo_actual = nodo_inicial
     camino = [nodo_inicial]
 
+    crear_arbol=(len(laberinto[0])<7)
+    if(crear_arbol):
+        arbol=Tree()
+        arbol.create_node(str(nodo_inicial),nodo_inicial)
+
     frontera = deque()
     frontera.append(camino)
     visitado = camino
     caminos_encontrados = [camino]
-    #print(nodo_inicial,nodo_objetivo, camino, frontera,visitado,caminos_encontrados)
 
     if(nodo_actual==nodo_objetivo):
-        return camino
+        return camino,visitados
 
     while frontera:
         camino = frontera.pop()
         hijos = expandir_nodo(laberinto,camino[-1])
-        #print(camino, hijos)
         if(len(hijos)>0):
             for hijo in hijos:
                 nuevo_camino = camino + [hijo]
-                #print(nuevo_camino)
-                #print(hijo)
                 if(hijo==nodo_objetivo):
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
-                    #print("found it")
-                    return nuevo_camino
-                #print(not nodo_en_frontera(visitado,hijo))
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
+                        arbol.show()
+                    return nuevo_camino,visitado
                 if(not nodo_en_frontera(visitado,hijo)):
-                    #print(visitado)
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
                     frontera.append(nuevo_camino)
-                    #print(frontera)
-                #print(visitado)
     return 0
 
 ##Búsqueda iterativa
@@ -195,13 +203,18 @@ def buscar_ids(laberinto):
     nodo_actual = nodo_inicial
     camino = [nodo_inicial]
 
+    crear_arbol=(len(laberinto[0])<7)
+    if(crear_arbol):
+        arbol=Tree()
+        arbol.create_node(str(nodo_inicial),nodo_inicial)
+
     frontera = deque()
     frontera.append(camino)
     visitado = camino
     caminos_encontrados = [camino]
 
     if(camino == nodo_objetivo):
-        return camino
+        return camino,visitado
 
     profundidad = 3
     valores_n = {}
@@ -222,9 +235,14 @@ def buscar_ids(laberinto):
                 if(hijo == nodo_objetivo):
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
-                    return nuevo_camino
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
+                        arbol.show()
+                    return nuevo_camino,visitado
 
                 if not nodo_en_frontera(visitado, hijo):
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
                     caminos_encontrados.append(nuevo_camino)
                     visitado.append(hijo)
                     if valores_n[hijo] <= altura:
@@ -247,6 +265,11 @@ def busqueda_uniforme(laberinto):
     nodo_actual = nodo_inicial
     camino = [nodo_inicial]
 
+    crear_arbol=(len(laberinto[0])<7)
+    if(crear_arbol):
+        arbol=Tree()
+        arbol.create_node(str(nodo_inicial),nodo_inicial)
+
     frontera = deque()
     frontera.append(camino)
     visitado = camino
@@ -256,7 +279,7 @@ def busqueda_uniforme(laberinto):
     pesos_hijos[nodo_actual] = 0
 
     if(nodo_actual == nodo_objetivo):
-        return camino
+        return camino,visitado
 
     while frontera:
         camino = frontera.pop()
@@ -273,12 +296,17 @@ def busqueda_uniforme(laberinto):
                 if(hijo == nodo_objetivo):
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
-                    return nuevo_camino
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
+                        arbol.show()
+                    return nuevo_camino,visitado
 
                 if nodo_en_frontera(visitado, hijo):
                     del pesos_hijos[hijo]
 
                 if not nodo_en_frontera(visitado, hijo):
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
                     caminos_encontrados.append(nuevo_camino)
                     visitado.append(hijo)
                     frontera.append(nuevo_camino)
@@ -300,13 +328,18 @@ def busqueda_BFS(laberinto):
     nodo_actual = nodo_inicial
     camino = [nodo_inicial]
 
+    crear_arbol=(len(laberinto[0])<7)
+    if(crear_arbol):
+        arbol=Tree()
+        arbol.create_node(str(nodo_inicial),nodo_inicial)
+
     frontera_queue = deque()
     frontera_queue.append(camino)
     visitado = camino
     caminos_encontrados = [camino]
 
     if(camino[-1] == nodo_objetivo):
-        return camino
+        return camino,visitado
 
     while queue:
         camino = frontera_queue.popleft()
@@ -317,12 +350,16 @@ def busqueda_BFS(laberinto):
                 if(hijo == nodo_objetivo):
                     visitado.append(hijo)
                     caminos_encontrados.append(nuevo_camino)
-                    return nuevo_camino
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
+                        arbol.show()
+                    return nuevo_camino,visitado
                 if(not nodo_en_frontera(visitado, hijo)):
+                    if(crear_arbol):
+                        arbol.create_node(str(hijo),hijo,parent=camino[-1])
                     caminos_encontrados.append(nuevo_camino)
                     visitado.append(hijo)
                     frontera_queue.append(nuevo_camino)
-
 ###PROGRAMA PRINCIPAL###
 
 laberinto,laberinto_ini=[],[]
@@ -358,23 +395,23 @@ while not salir:
     screen.blit(laberinto_grafico,(250,50))
     if dibujar_boton(screen,boton_DFS):
         print("DFS")
-        camino=buscar_dfs(laberinto)
-        laberinto = matriz_lab_final(laberinto,camino)
+        camino,visitados=buscar_dfs(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino,visitados)
         continue
     if dibujar_boton(screen,boton_BFS):
         print("BFS")
-        camino=busqueda_BFS(laberinto)
-        laberinto = matriz_lab_final(laberinto,camino)
+        camino,visitados=busqueda_BFS(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino,visitados)
         continue        
     if dibujar_boton(screen,boton_IDS):
         print("IDS")
-        camino=buscar_ids(laberinto)
-        laberinto = matriz_lab_final(laberinto,camino)
+        camino,visitados=buscar_ids(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino,visitados)
         continue        
     if dibujar_boton(screen,boton_UCS):
         print("UCS")
-        camino=busqueda_uniforme(laberinto)
-        laberinto = matriz_lab_final(laberinto,camino)
+        camino,visitados=busqueda_uniforme(laberinto)
+        laberinto = matriz_lab_final(laberinto,camino,visitados)
         continue        
     if dibujar_boton(screen,boton_GREEDY):
         print("GREEDY")
